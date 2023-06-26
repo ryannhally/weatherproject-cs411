@@ -1,0 +1,12 @@
+def get_location():
+    URL = 'https://ipgeolocation.abstractapi.com/v1/?api_key=${API_KEY}&fields=city'
+    API_KEY = '54589c2eef56405591af2ac0a72f8eba'
+
+    response = requests.get(URL.format(API_KEY=API_KEY))
+
+    if response.status_code == 200:
+        data = response.json()
+        return data
+    else:
+        message = 'Failed to get user location'
+        return {'message': message}
