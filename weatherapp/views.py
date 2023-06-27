@@ -4,12 +4,14 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from django.contrib.auth.forms import AuthenticationForm 
 from .forms import NewUserForm 
+from django.db.models.functions.math import math
 
 
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
+
 
 from datetime import datetime
 
@@ -66,13 +68,48 @@ def index(request):
     return render(request, 'weatherapp/weather.html', context)
 
 """
-def calculate_feels_like(d_temperature, d_windspeed, h_temperature, h_windspeed): 
-                        #or manybe make them ^ into a tuple to group better, your choice 
-    if d_windspeed >= 4:
-        feels_like = 'Cooler than Expected'
-    else:
-        feels_like = 'TBD'
-    return feels_like
+def calculate_feels_like(d_temperature, d_windspeed, d_humidity, d_uvindex): 
+    feels_like = ''
+
+    # Case 1 - Hot Day
+    if d_temperature >= 75:
+
+        if d_uvindex >= 7:
+            feels_like += "High UV Index"
+            if math.isclose(d_humidity, .40):
+                # High UV and humidity
+                feels_like += " and humidity may make temperatures feel warmer. "
+
+            else:
+                # Only High UV
+                feels_like += "may make temperatures feel warmer. " 
+
+
+        elif math.isclose(d_humidity, .40):
+            # Only high humidity
+            feels_like += "High humidity may make temperatures feel warmer. "
+
+        
+        if d_windspeed >= 7:
+                feels_like += "Breeze may provide some relief against hot temperatures."
+        
+        elif not math.isclose(d_humidity, .40): 
+            if d_uvindex < 7:
+                feels_like = "Temperature reflects outside conditions."
+
+    # Case 2 - Cold/normal day
+    else: 
+
+        if d_windspeed >= 7:
+            feels_like += "Breeze may make temperatures feel slightly cooler. "
+
+        elif d_windspeed >= 15:
+            feels_like += "High wind speeds make may temperatures feel cooler. "
+
+        else: 
+            feels_like = "Temperature reflects outside conditions."
+
+    return feels_like 
 
 def index(request):
     #toNote: below is very jank code, but it work, I will clean it up later, you can also change whatever you want
@@ -106,32 +143,17 @@ def index(request):
             'daily_temperature': d['temp'],
             'daily_description': d['description'],
             'daily_windspeed': d['windspeed'],
-            'daily_winddir': d['winddir'],
             'daily_humidity': d['humidity'],
-            'daily_precip': d['precip'],
-            'daily_precipprob': r['days'][0]['precipprob'], #Ryann, please delete variables as you see fit
-            'daily_visibility': r['days'][0]['visibility'], #these are just here becuase they might be useful
-            'daily_cloudcover': r['days'][0]['cloudcover'], #same for the hourly ones, etc etc
-            'daily_dew': r['days'][0]['dew'],
-            'daily_sunrise': r['days'][0]['sunrise'],
-            'daily_sunset': r['days'][0]['sunset'],
+            'daily_uvindex': d['uvindex'],
             #this is here to show a clear split between daily and hourly values
             'hourly_temperature': d['hours'][0]['temp'],
             #'hourly_description': d['hours'][0]['description'],
             'hourly_windspeed': d['hours'][0]['windspeed'],
-            'hourly_winddir': d['hours'][0]['winddir'],
-            'hourly_humidity': d['hours'][0]['humidity'],
-            'hourly_precip': d['hours'][0]['precip'],
-            'hourly_precipprob': d['hours'][0]['precipprob'],
-            'hourly_visibility': d['hours'][0]['visibility'],
-            'hourly_cloudcover': h['cloudcover'],
-            'hourly_dew': h['dew'],
-            #'hourly_sunrise': h['sunrise'],
-            #'hourly_sunset': h['sunset'],
+            'hourly_humidity': d['hours'][0]['humidity']
         }
 
-        feels_like = calculate_feels_like(r['days'][0]['temp'], r['days'][0]['windspeed'], d['hours'][0]['temp'], d['hours'][0]['windspeed'])
-        #add variables you think work here :D
+       feels_like = calculate_feels_like(r['days'][0]['temp'], r['days'][0]['windspeed'], r['days'][0]['humidity'], r['days'][0]['uvindex'])
+
     else:
         city_weather = {}
         feels_like = None
